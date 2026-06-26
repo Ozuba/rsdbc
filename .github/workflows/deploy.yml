@@ -1,9 +1,14 @@
-# Build the rsdbc Trunk (WASM) site and deploy it to GitHub Pages.
-name: Deploy rsdbc to GitHub Pages
+# Build the rsdbc WASM site with Trunk and deploy it to GitHub Pages.
+#
+# Based on GitHub's "Deploy static content" starter, but a WASM app cannot be
+# served from the raw repo: the root index.html is a Trunk template, and the
+# real site is generated into ./dist by `trunk build`. So we build first, then
+# upload ./dist (not the whole repo).
+name: Deploy to Pages
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -11,51 +16,46 @@ permissions:
   pages: write
   id-token: write
 
-# Allow one concurrent deployment; don't cancel an in-progress production deploy.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup | Rust (wasm target)
-        run: rustup target add wasm32-unknown-unknown
-
-      - name: Setup | Cache cargo build
-        uses: Swatinem/rust-cache@v2
-
-      - name: Setup | cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
-
-      - name: Setup | trunk
-        run: cargo binstall -y trunk
-
-      - name: Setup | Pages
-        id: pages
-        uses: actions/configure-pages@v5
-
-      # public-url makes assets resolve under the project subpath
-      # (e.g. https://<user>.github.io/<repo>/).
-      - name: Build | Trunk
-        run: trunk build --release --public-url "${{ steps.pages.outputs.base_path }}/"
-
-      - name: Build | Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Trunk
+        uses: jetli/trunk-action@v0.5.0
+        with:
+          version: "latest"
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # --public-url makes every asset path resolve under the project subpath
+      # (https://<user>.github.io/<repo>/), which is why uploading the raw repo
+      # never works for a project site.
+      - name: Build with Trunk
+        run: trunk build --release --public-url "${{ steps.pages.outputs.base_path }}/"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./dist"
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
