@@ -3,8 +3,7 @@
 A fully functional editor for CAN `.dbc` databases, written in Rust with
 [egui](https://github.com/emilk/egui)/[eframe](https://github.com/emilk/egui/tree/master/crates/eframe).
 The exact same code runs as a native desktop app and as a WebAssembly app in the
-browser. Inspired by the sibling [`can-viewer`](../can-viewer) project, which
-shares the egui + Trunk + WASM stack.
+browser. 
 
 ## Features
 
