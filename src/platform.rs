@@ -61,9 +61,21 @@ pub fn save_file(filename: &str, contents: &str) -> Result<bool, String> {
     Ok(true)
 }
 
-/// On web, file opening is handled by drag-and-drop (see the app), so the
-/// picker button is native-only. This stub keeps call sites uniform.
+/// Open a browser file picker asynchronously and deliver the chosen file as
+/// (name, contents) over `sender`. Returns immediately; the app polls the
+/// receiver each frame. Drag-and-drop remains available as an alternative.
 #[cfg(target_arch = "wasm32")]
-pub fn open_file() -> Option<(String, String)> {
-    None
+pub fn open_file_async(sender: std::sync::mpsc::Sender<(String, String)>) {
+    wasm_bindgen_futures::spawn_local(async move {
+        if let Some(file) = rfd::AsyncFileDialog::new()
+            .add_filter("DBC", &["dbc", "DBC"])
+            .pick_file()
+            .await
+        {
+            let name = file.file_name();
+            let bytes = file.read().await;
+            let text = String::from_utf8_lossy(&bytes).into_owned();
+            let _ = sender.send((name, text));
+        }
+    });
 }

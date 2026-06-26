@@ -26,6 +26,9 @@ pub struct App {
     status: String,
     #[serde(skip)]
     dirty: bool,
+    /// Receives a file picked asynchronously (web file dialog).
+    #[serde(skip)]
+    file_rx: Option<std::sync::mpsc::Receiver<(String, String)>>,
 }
 
 impl Default for App {
@@ -48,6 +51,7 @@ impl Default for App {
             raw_cache: String::new(),
             status: "Loaded built-in example. Drag a .dbc file in to edit your own.".to_string(),
             dirty: false,
+            file_rx: None,
         }
     }
 }
@@ -61,6 +65,41 @@ impl App {
             }
         }
         App::default()
+    }
+
+    /// Open a DBC via the platform file picker (synchronous on native, an
+    /// async browser dialog on web).
+    fn open_dialog(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some((name, text)) = platform::open_file() {
+                self.load_text(name, &text);
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let (tx, rx) = std::sync::mpsc::channel();
+            self.file_rx = Some(rx);
+            self.status = "Choose a .dbc file…".to_string();
+            platform::open_file_async(tx);
+        }
+    }
+
+    /// Deliver a file chosen via the async (web) picker, if one has arrived.
+    fn poll_async_file(&mut self, ctx: &egui::Context) {
+        let Some(rx) = &self.file_rx else { return };
+        match rx.try_recv() {
+            Ok((name, text)) => {
+                self.load_text(name, &text);
+                self.file_rx = None;
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                // Keep polling while the dialog is open; the canvas may not
+                // otherwise receive events to trigger a repaint.
+                ctx.request_repaint_after(std::time::Duration::from_millis(100));
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => self.file_rx = None,
+        }
     }
 
     fn load_text(&mut self, name: String, text: &str) {
@@ -119,6 +158,7 @@ impl eframe::App for App {
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_dropped_files(ctx);
+        self.poll_async_file(ctx);
 
         self.top_bar(ctx);
         self.left_panel(ctx);
@@ -160,10 +200,8 @@ impl App {
                 ui.heading("rsdbc");
                 ui.separator();
 
-                if cfg!(not(target_arch = "wasm32")) && ui.button("📂 Open").clicked() {
-                    if let Some((name, text)) = platform::open_file() {
-                        self.load_text(name, &text);
-                    }
+                if ui.button("📂 Open").clicked() {
+                    self.open_dialog();
                 }
                 if ui.button("💾 Save").clicked() {
                     self.save();
