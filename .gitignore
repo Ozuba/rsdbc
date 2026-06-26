@@ -1,0 +1,13 @@
+# Build artifacts
+/target
+/dist
+
+# Editor / backup files
+**/*.rs.bk
+Cargo.lock.bak
+
+# Reference material kept locally but not part of this repo:
+#   can-viewer is a separate project (its own git repo) used only for inspiration;
+#   TeR_DATABASES was the original sample set, superseded by dbc_tests.
+/can-viewer
+/TeR_DATABASES
