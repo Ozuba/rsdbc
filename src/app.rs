@@ -287,7 +287,10 @@ impl App {
                 let mut remove: Option<usize> = None;
                 for (i, node) in self.dbc.nodes.iter_mut().enumerate() {
                     ui.horizontal(|ui| {
-                        if ui.add(egui::TextEdit::singleline(&mut node.name).desired_width(160.0)).changed() {
+                        if ui
+                            .add(egui::TextEdit::singleline(&mut node.name).desired_width(160.0))
+                            .changed()
+                        {
                             self.dirty = true;
                         }
                         if ui.small_button("🗑").clicked() {
@@ -500,7 +503,11 @@ impl App {
                     ui.label("Comment");
                     let mut comment = m.comment.clone().unwrap_or_default();
                     if ui.text_edit_singleline(&mut comment).changed() {
-                        m.comment = if comment.is_empty() { None } else { Some(comment) };
+                        m.comment = if comment.is_empty() {
+                            None
+                        } else {
+                            Some(comment)
+                        };
                         dirty = true;
                     }
                     ui.end_row();
@@ -577,8 +584,16 @@ fn signal_list(
             s.name,
             s.start_bit,
             s.size,
-            if s.byte_order == ByteOrder::LittleEndian { "1" } else { "0" },
-            if s.value_type == ValueType::Signed { "-" } else { "+" },
+            if s.byte_order == ByteOrder::LittleEndian {
+                "1"
+            } else {
+                "0"
+            },
+            if s.value_type == ValueType::Signed {
+                "-"
+            } else {
+                "+"
+            },
         );
         egui::CollapsingHeader::new(header)
             .id_salt(("sig", i))
@@ -678,11 +693,15 @@ fn signal_fields(
             ui.end_row();
 
             ui.label("Factor");
-            dirty |= ui.add(egui::DragValue::new(&mut s.factor).speed(0.001)).changed();
+            dirty |= ui
+                .add(egui::DragValue::new(&mut s.factor).speed(0.001))
+                .changed();
             ui.end_row();
 
             ui.label("Offset");
-            dirty |= ui.add(egui::DragValue::new(&mut s.offset).speed(0.001)).changed();
+            dirty |= ui
+                .add(egui::DragValue::new(&mut s.offset).speed(0.001))
+                .changed();
             ui.end_row();
 
             ui.label("Minimum");
@@ -719,7 +738,11 @@ fn signal_fields(
             ui.label("Comment");
             let mut comment = s.comment.clone().unwrap_or_default();
             if ui.text_edit_singleline(&mut comment).changed() {
-                s.comment = if comment.is_empty() { None } else { Some(comment) };
+                s.comment = if comment.is_empty() {
+                    None
+                } else {
+                    Some(comment)
+                };
                 dirty = true;
             }
             ui.end_row();
@@ -743,19 +766,28 @@ fn mux_editor(ui: &mut egui::Ui, s: &mut Signal) -> bool {
         egui::ComboBox::from_id_salt("mux")
             .selected_text(current)
             .show_ui(ui, |ui| {
-                if ui.selectable_label(matches!(s.multiplexer, Multiplexer::None), "Normal").clicked() {
+                if ui
+                    .selectable_label(matches!(s.multiplexer, Multiplexer::None), "Normal")
+                    .clicked()
+                {
                     s.multiplexer = Multiplexer::None;
                     dirty = true;
                 }
                 if ui
-                    .selectable_label(matches!(s.multiplexer, Multiplexer::Multiplexor), "Multiplexor (M)")
+                    .selectable_label(
+                        matches!(s.multiplexer, Multiplexer::Multiplexor),
+                        "Multiplexor (M)",
+                    )
                     .clicked()
                 {
                     s.multiplexer = Multiplexer::Multiplexor;
                     dirty = true;
                 }
                 if ui
-                    .selectable_label(matches!(s.multiplexer, Multiplexer::Multiplexed(_)), "Multiplexed (m)")
+                    .selectable_label(
+                        matches!(s.multiplexer, Multiplexer::Multiplexed(_)),
+                        "Multiplexed (m)",
+                    )
                     .clicked()
                 {
                     s.multiplexer = Multiplexer::Multiplexed(0);
@@ -771,62 +803,75 @@ fn mux_editor(ui: &mut egui::Ui, s: &mut Signal) -> bool {
 }
 
 /// An editable table of `(value, label)` rows. Returns true if changed.
-fn edit_value_pairs(ui: &mut egui::Ui, salt: &str, pairs: &mut Vec<(i64, String)>) -> bool {
+fn edit_value_pairs(ui: &mut egui::Ui, _salt: &str, pairs: &mut Vec<(i64, String)>) -> bool {
     let mut dirty = false;
     let mut remove: Option<usize> = None;
-    egui::Grid::new(salt).num_columns(3).show(ui, |ui| {
+
+    ui.vertical(|ui| {
         for (i, (val, label)) in pairs.iter_mut().enumerate() {
-            dirty |= ui.add(egui::DragValue::new(val)).changed();
-            dirty |= ui
-                .add(egui::TextEdit::singleline(label).desired_width(180.0))
-                .changed();
-            if ui.small_button("🗑").clicked() {
-                remove = Some(i);
-            }
-            ui.end_row();
+            ui.horizontal(|ui| {
+                dirty |= ui.add(egui::DragValue::new(val)).changed();
+
+                dirty |= ui
+                    .add(egui::TextEdit::singleline(label).desired_width(280.))
+                    .changed();
+
+                if ui.small_button("🗑").clicked() {
+                    remove = Some(i);
+                }
+            });
         }
     });
+
     if let Some(i) = remove {
         pairs.remove(i);
         dirty = true;
     }
+
     if ui.button("➕ Add value").clicked() {
         let next = pairs.last().map(|(v, _)| v + 1).unwrap_or(0);
         pairs.push((next, String::new()));
         dirty = true;
     }
+
     dirty
 }
 
 fn value_descriptions_editor(ui: &mut egui::Ui, s: &mut Signal, tables: &[ValueTableRef]) -> bool {
     let mut dirty = false;
-    egui::CollapsingHeader::new(format!("Value descriptions ({})", s.value_descriptions.len()))
-        .id_salt("vals")
-        .show(ui, |ui| {
-            // Reuse a global value table as a template by copying its entries
-            // into this signal's inline VAL_ descriptions (the portable link).
-            if !tables.is_empty() {
-                ui.horizontal(|ui| {
-                    egui::ComboBox::from_id_salt("apply_table")
-                        .selected_text("Apply table…")
-                        .show_ui(ui, |ui| {
-                            for (name, values) in tables {
-                                if ui.selectable_label(false, name).clicked() {
-                                    s.value_descriptions = values.clone();
-                                    dirty = true;
-                                }
+    egui::CollapsingHeader::new(format!(
+        "Value descriptions ({})",
+        s.value_descriptions.len()
+    ))
+    .id_salt("vals")
+    .show(ui, |ui| {
+        // Reuse a global value table as a template by copying its entries
+        // into this signal's inline VAL_ descriptions (the portable link).
+        if !tables.is_empty() {
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_id_salt("apply_table")
+                    .selected_text("Apply table…")
+                    .show_ui(ui, |ui| {
+                        for (name, values) in tables {
+                            if ui.selectable_label(false, name).clicked() {
+                                s.value_descriptions = values.clone();
+                                dirty = true;
                             }
-                        });
-                    if !s.value_descriptions.is_empty()
-                        && ui.small_button("Clear").on_hover_text("Remove all values").clicked()
-                    {
-                        s.value_descriptions.clear();
-                        dirty = true;
-                    }
-                });
-            }
-            dirty |= edit_value_pairs(ui, "valdesc", &mut s.value_descriptions);
-        });
+                        }
+                    });
+                if !s.value_descriptions.is_empty()
+                    && ui
+                        .small_button("Clear")
+                        .on_hover_text("Remove all values")
+                        .clicked()
+                {
+                    s.value_descriptions.clear();
+                    dirty = true;
+                }
+            });
+        }
+        dirty |= edit_value_pairs(ui, "valdesc", &mut s.value_descriptions);
+    });
     dirty
 }
 
@@ -916,8 +961,7 @@ fn bit_layout(ui: &mut egui::Ui, m: &Message) {
                                 let c = PALETTE[si % PALETTE.len()];
                                 (c, format!("{flat}"), m.signals[si].name.clone())
                             };
-                            let (rect, resp) =
-                                ui.allocate_exact_size(cell, egui::Sense::hover());
+                            let (rect, resp) = ui.allocate_exact_size(cell, egui::Sense::hover());
                             ui.painter().rect_filled(rect, 3.0, color);
                             if !text.is_empty() {
                                 ui.painter().text(

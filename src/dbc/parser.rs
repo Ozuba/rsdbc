@@ -12,7 +12,10 @@ pub fn parse(input: &str) -> Result<Dbc, String> {
 
     // Normalise line endings and collect into an indexable buffer so we can
     // consume multi-line constructs (the `NS_` block, continued statements).
-    let raw_lines: Vec<&str> = input.split('\n').map(|l| l.trim_end_matches('\r')).collect();
+    let raw_lines: Vec<&str> = input
+        .split('\n')
+        .map(|l| l.trim_end_matches('\r'))
+        .collect();
 
     // Deferred attachments: comments and value descriptions reference messages
     // and signals that may appear earlier or later, so resolve them after the
@@ -142,11 +145,15 @@ fn parse_message(line: &str) -> Result<Message, String> {
     let rest = line.strip_prefix("BO_ ").unwrap_or(line);
     let mut parts = rest.split_whitespace();
     let id_str = parts.next().ok_or("BO_ missing id")?;
-    let id: u32 = id_str.parse().map_err(|_| format!("bad message id '{id_str}'"))?;
+    let id: u32 = id_str
+        .parse()
+        .map_err(|_| format!("bad message id '{id_str}'"))?;
     let name_tok = parts.next().ok_or("BO_ missing name")?;
     let name = name_tok.trim_end_matches(':').to_string();
     let size_str = parts.next().ok_or("BO_ missing size")?;
-    let size: u64 = size_str.parse().map_err(|_| format!("bad dlc '{size_str}'"))?;
+    let size: u64 = size_str
+        .parse()
+        .map_err(|_| format!("bad dlc '{size_str}'"))?;
     let transmitter = parts.next().unwrap_or("Vector__XXX").to_string();
 
     Ok(Message {
@@ -187,7 +194,10 @@ fn parse_signal(line: &str) -> Result<Signal, String> {
     let bar = bitspec.find('|').ok_or("SG_ missing '|'")?;
     let start_bit: u64 = bitspec[..bar].trim().parse().map_err(|_| "bad start bit")?;
     let at = bitspec.find('@').ok_or("SG_ missing '@'")?;
-    let size: u64 = bitspec[bar + 1..at].trim().parse().map_err(|_| "bad size")?;
+    let size: u64 = bitspec[bar + 1..at]
+        .trim()
+        .parse()
+        .map_err(|_| "bad size")?;
     let order_sign = &bitspec[at + 1..];
     let byte_order = if order_sign.starts_with('0') {
         ByteOrder::BigEndian
@@ -206,7 +216,10 @@ fn parse_signal(line: &str) -> Result<Signal, String> {
         let comma = inner.find(',').ok_or("SG_ bad (factor,offset)")?;
         (
             inner[..comma].trim().parse().map_err(|_| "bad factor")?,
-            inner[comma + 1..].trim().parse().map_err(|_| "bad offset")?,
+            inner[comma + 1..]
+                .trim()
+                .parse()
+                .map_err(|_| "bad offset")?,
         )
     };
 
@@ -364,9 +377,24 @@ fn attach_values(dbc: &mut Dbc, vals: Vec<ValDef>) {
 /// Keywords for statements terminated by `;` (and thus possibly multi-line).
 fn needs_semicolon(trimmed: &str) -> bool {
     const KW: [&str; 18] = [
-        "CM_", "VAL_TABLE_", "VAL_", "BA_DEF_DEF_REL_", "BA_DEF_DEF_", "BA_DEF_REL_", "BA_DEF_",
-        "BA_REL_", "BA_", "SIG_GROUP_", "SIG_VALTYPE_", "BO_TX_BU_", "EV_DATA_", "ENVVAR_DATA_",
-        "SG_MUL_VAL_", "FILTER", "CAT_", "SGTYPE_",
+        "CM_",
+        "VAL_TABLE_",
+        "VAL_",
+        "BA_DEF_DEF_REL_",
+        "BA_DEF_DEF_",
+        "BA_DEF_REL_",
+        "BA_DEF_",
+        "BA_REL_",
+        "BA_",
+        "SIG_GROUP_",
+        "SIG_VALTYPE_",
+        "BO_TX_BU_",
+        "EV_DATA_",
+        "ENVVAR_DATA_",
+        "SG_MUL_VAL_",
+        "FILTER",
+        "CAT_",
+        "SGTYPE_",
     ];
     KW.iter().any(|k| trimmed.starts_with(k))
 }

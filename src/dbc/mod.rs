@@ -67,7 +67,10 @@ mod tests {
         // following comment statement.
         let dbc = parse(SOCIALLEDGE).unwrap();
         let motor = dbc.nodes.iter().find(|n| n.name == "MOTOR").unwrap();
-        assert_eq!(motor.comment.as_deref(), Some("The motor controller of the car"));
+        assert_eq!(
+            motor.comment.as_deref(),
+            Some("The motor controller of the car")
+        );
         let driver = dbc.nodes.iter().find(|n| n.name == "DRIVER").unwrap();
         assert_eq!(
             driver.comment.as_deref(),
@@ -122,7 +125,10 @@ VAL_TABLE_ Table1 1 "One" 0 "Zero" ;
         assert_eq!(dbc.value_tables[0].values.len(), 4);
         assert_eq!(dbc.value_tables[1].name, "Empty");
         assert!(dbc.value_tables[1].values.is_empty());
-        assert_eq!(dbc.value_tables[2].values, vec![(1, "One".into()), (0, "Zero".into())]);
+        assert_eq!(
+            dbc.value_tables[2].values,
+            vec![(1, "One".into()), (0, "Zero".into())]
+        );
     }
 
     #[test]

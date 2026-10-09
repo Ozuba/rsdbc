@@ -71,5 +71,9 @@ fn roundtrip_all_dbc_tests() {
     for f in &failures {
         eprintln!("  FAIL {f}");
     }
-    assert!(failures.is_empty(), "{} files failed round-trip", failures.len());
+    assert!(
+        failures.is_empty(),
+        "{} files failed round-trip",
+        failures.len()
+    );
 }
